@@ -49,9 +49,17 @@ end
 
 # Holds the state and calculates whether or not it is better than another move
 class Move
-  VALUES = [:rock, :paper, :scissors].freeze
-  SHORTHAND_MAPPING = { r: :rock, p: :paper, s: :scissors }.freeze
-  RULES = { rock: [:scissors], paper: [:rock], scissors: [:paper] }.freeze
+  VALUES = [:rock, :paper, :scissors, :lizard, :spock].freeze
+  SHORTHAND_MAPPING = { r: :rock,
+                        p: :paper,
+                        s: :scissors,
+                        l: :lizard,
+                        sp: :spock }.freeze
+  RULES = { rock: [:scissors, :lizard],
+            paper: [:rock, :spock],
+            scissors: [:paper, :lizard],
+            lizard: [:spock, :paper],
+            spock: [:rock, :scissors] }.freeze
 
   attr_accessor :value
 
@@ -97,27 +105,29 @@ class Move
   end
 end
 
-# class Rule
-#   def initialize
-#
-#   end
-# end
-
 class RPSGame
-  attr_accessor :human, :computer
+  attr_accessor :human, :computer, :score
 
   def initialize
     @human = HumanPlayer.new
     @computer = ComputerPlayer.new
+    @score = { human: 0, computer: 0 }
   end
 
+  # Main execution loop.
   def play
     loop do
       display_welcome_message
-      human.choose
-      computer.choose
-      display_winner
 
+      loop do
+        display_score
+        human.choose
+        computer.choose
+        display_round_winner
+        break if someone_won?
+      end
+
+      display_game_winner
       break unless play_again?
     end
 
@@ -131,20 +141,36 @@ class RPSGame
   end
 
   def display_goodbye_message
-    puts "Goodbye!"
+    puts "Thanks for playing RPS. Goodbye!"
   end
 
-  def display_winner
+  def display_score
+    puts "Player: #{@score[:human]}"
+    puts "Computer: #{@score[:computer]}"
+  end
+
+  def display_round_winner
     puts "Player chose #{human.move}."
     puts "Computer chose #{computer.move}."
 
     if human.move > computer.move
-      puts "Player wins!"
+      puts "Player wins this round!"
+      score[:human] += 1
     elsif human.move < computer.move
-      puts "Computer wins!"
+      puts "Computer wins this round!"
+      score[:computer] += 1
     else
       puts "It's a tie!"
     end
+  end
+
+  def display_game_winner
+    winner = (@score[:human] == 5 ? 'Player' : 'Computer')
+    puts "#{winner} wins the match!"
+  end
+
+  def someone_won?
+    @score.values.any? { |value| value >= 5 }
   end
 
   def play_again?
