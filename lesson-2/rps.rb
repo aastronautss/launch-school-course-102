@@ -7,26 +7,84 @@ class Player
   end
 
   # Chooses the player's move.
-  def choose
+  def choose(move_history)
+  end
+
+  def computer?
+  end
+
+  def human?
   end
 end
 
 # Extends the Player class, includes methods for automated name and move
 # decisions.
 class ComputerPlayer < Player
-  def choose
-    self.move = Move.random_move
+  LOSS_MULTIPLIER = 0.9
+  VICTORY_MULTIPLIER = 1.1
+
+  def initialize
+    @move_weights = {}
+    populate_move_weights
+  end
+
+  def choose(move_history)
+    update_move_weights(move_history)
+    @move = weighted_random_move
+  end
+
+  def computer?
+    true
+  end
+
+  def human?
+    false
   end
 
   def to_s
     "Computer"
   end
+
+  private
+
+  def populate_move_weights
+    Move::VALUES.each { |value| @move_weights[value] = 1.0 }
+  end
+
+  def update_move_weights(move_history)
+    recent = move_history.most_recent_event
+    return if recent.nil? || recent.winner.nil?
+
+    if recent.winner.computer?
+      adjust_weights(recent.computer.move, VICTORY_MULTIPLIER)
+    elsif recent.winner.human?
+      adjust_weights(recent.computer.move, LOSS_MULTIPLIER)
+    end
+  end
+
+  def adjust_weights(move, multiplier)
+      value = move.value
+      @move_weights[value] *= multiplier
+  end
+
+  def weighted_random_move
+    value = @move_weights.max_by { |_, weight| rand**(1.0 / weight) }.first
+    Move.new(value)
+  end
 end
 
 # Extends the Player class, includes methods for manual input.
 class HumanPlayer < Player
-  def choose
+  def choose(move_history)
     self.move = Move.new(prompt_move)
+  end
+
+  def computer?
+    false
+  end
+
+  def human?
+    true
   end
 
   def to_s
@@ -131,6 +189,20 @@ class MoveHistory
   def add_event(human, computer, winner)
     @list << Event.new(human, computer, winner)
   end
+
+  def most_recent_event
+    @list.last
+  end
+
+  def computer_winning_moves
+    events = @list.select { |event| event.winner && event.winner.computer? }
+    events.map { |event| event.computer.move }
+  end
+
+  def computer_losing_moves
+    events = @list.select { |event| event.winner && event.winner.human? }
+    events.map { |event| event.computer.move }
+  end
 end
 
 class RPSGame
@@ -139,19 +211,19 @@ class RPSGame
   def initialize
     @human = HumanPlayer.new
     @computer = ComputerPlayer.new
-    @score = { @human => 0, @computer => 0 }
     @move_history = MoveHistory.new
   end
 
   # Main execution loop.
   def play
+    display_welcome_message
     loop do
-      display_welcome_message
+      reset_score
 
       loop do
         display_score
-        human.choose
-        computer.choose
+        human.choose(@move_history)
+        computer.choose(@move_history)
         round_winner_sequence
         break if someone_won?
       end
@@ -171,6 +243,10 @@ class RPSGame
 
   def display_goodbye_message
     puts "Thanks for playing RPS. Goodbye!"
+  end
+
+  def reset_score
+    @score = { @human => 0, @computer => 0 }
   end
 
   def display_score
@@ -216,7 +292,7 @@ class RPSGame
   end
 
   def display_game_winner
-    winner = (@score[:human] == 5 ? 'Player' : 'Computer')
+    winner = (@score[human] == 5 ? 'Player' : 'Computer')
     puts "#{winner} wins the match!"
   end
 
