@@ -51,6 +51,8 @@ class ComputerPlayer < Player
     Move::VALUES.each { |value| @move_weights[value] = 1.0 }
   end
 
+  # Changes weights based on the most recent event.
+  # Ugly as hell, but it works.
   def update_move_weights(move_history)
     recent = move_history.most_recent_event
     return if recent.nil? || recent.winner.nil?
@@ -171,7 +173,10 @@ class Move
   end
 end
 
+# A log of RPS game snapshots.
 class MoveHistory
+
+  # An RPS game snapshot.
   class Event
     attr_accessor :human, :computer, :winner
 
@@ -186,19 +191,23 @@ class MoveHistory
     @list = []
   end
 
+  # Adds a new event to the history list.
   def add_event(human, computer, winner)
     @list << Event.new(human, computer, winner)
   end
 
+  # Returns the most recent event.
   def most_recent_event
     @list.last
   end
 
+  # Returns all of the winning moves the computer has made.
   def computer_winning_moves
     events = @list.select { |event| event.winner && event.winner.computer? }
     events.map { |event| event.computer.move }
   end
 
+  # Returns all the losing moves the computer has made.
   def computer_losing_moves
     events = @list.select { |event| event.winner && event.winner.human? }
     events.map { |event| event.computer.move }
@@ -237,23 +246,29 @@ class RPSGame
 
   private
 
+  # Prints the welcome message.
   def display_welcome_message
     puts "Welcome to RPS!"
   end
 
+  # Prints the goodbye message.
   def display_goodbye_message
     puts "Thanks for playing RPS. Goodbye!"
   end
 
+  # Resets scores back to 0.
   def reset_score
     @score = { @human => 0, @computer => 0 }
   end
 
+  # Human redable scores.
   def display_score
     puts "Player: #{@score[human]}"
     puts "Computer: #{@score[computer]}"
   end
 
+  # Sequence for determining the round winner, displaying useful messages,
+  # and all the housekeeping required.
   def round_winner_sequence
     display_moves
     winner = calculate_winner
@@ -261,11 +276,13 @@ class RPSGame
     display_round_winner(winner)
   end
 
+  # Human readable move display.
   def display_moves
     puts "Player chose #{human.move}."
     puts "Computer chose #{computer.move}."
   end
 
+  # Determines the winner, if any, and returns the winner.
   def calculate_winner
     winner = nil
 
@@ -279,10 +296,12 @@ class RPSGame
     winner
   end
 
+  # Add a new event to the history, with the winner.
   def add_to_history(winner)
     move_history.add_event(human, computer, winner)
   end
 
+  # Prints the round's winnner. If there is a tie, says so.
   def display_round_winner(winner)
     if winner
       puts "#{winner} wins this round!"
@@ -291,15 +310,18 @@ class RPSGame
     end
   end
 
+  # Prints the final outcome of the match. Assumes a winner exists.
   def display_game_winner
     winner = (@score[human] == 5 ? 'Player' : 'Computer')
     puts "#{winner} wins the match!"
   end
 
+  # Returns true if someone has reached the maximum score.
   def someone_won?
     @score.values.any? { |value| value >= 5 }
   end
 
+  # Play again validation. Returns true if the user wants to play again.
   def play_again?
     answer = nil
     loop do
