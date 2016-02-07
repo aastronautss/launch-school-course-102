@@ -17,12 +17,20 @@ class ComputerPlayer < Player
   def choose
     self.move = Move.random_move
   end
+
+  def to_s
+    "Computer"
+  end
 end
 
 # Extends the Player class, includes methods for manual input.
 class HumanPlayer < Player
   def choose
     self.move = Move.new(prompt_move)
+  end
+
+  def to_s
+    "Player"
   end
 
   private
@@ -105,13 +113,34 @@ class Move
   end
 end
 
+class MoveHistory
+  class Event
+    attr_accessor :human, :computer, :winner
+
+    def initialize(human, computer, winner)
+      @human = human.clone
+      @computer = computer.clone
+      @winner = (winner ? winner.clone : nil)
+    end
+  end
+
+  def initialize
+    @list = []
+  end
+
+  def add_event(human, computer, winner)
+    @list << Event.new(human, computer, winner)
+  end
+end
+
 class RPSGame
-  attr_accessor :human, :computer, :score
+  attr_accessor :human, :computer, :score, :move_history
 
   def initialize
     @human = HumanPlayer.new
     @computer = ComputerPlayer.new
-    @score = { human: 0, computer: 0 }
+    @score = { @human => 0, @computer => 0 }
+    @move_history = MoveHistory.new
   end
 
   # Main execution loop.
@@ -123,7 +152,7 @@ class RPSGame
         display_score
         human.choose
         computer.choose
-        display_round_winner
+        round_winner_sequence
         break if someone_won?
       end
 
@@ -145,20 +174,42 @@ class RPSGame
   end
 
   def display_score
-    puts "Player: #{@score[:human]}"
-    puts "Computer: #{@score[:computer]}"
+    puts "Player: #{@score[human]}"
+    puts "Computer: #{@score[computer]}"
   end
 
-  def display_round_winner
+  def round_winner_sequence
+    display_moves
+    winner = calculate_winner
+    add_to_history(winner)
+    display_round_winner(winner)
+  end
+
+  def display_moves
     puts "Player chose #{human.move}."
     puts "Computer chose #{computer.move}."
+  end
+
+  def calculate_winner
+    winner = nil
 
     if human.move > computer.move
-      puts "Player wins this round!"
-      score[:human] += 1
+      winner = human
     elsif human.move < computer.move
-      puts "Computer wins this round!"
-      score[:computer] += 1
+      winner = computer
+    end
+
+    score[winner] += 1 if winner
+    winner
+  end
+
+  def add_to_history(winner)
+    move_history.add_event(human, computer, winner)
+  end
+
+  def display_round_winner(winner)
+    if winner
+      puts "#{winner} wins this round!"
     else
       puts "It's a tie!"
     end
